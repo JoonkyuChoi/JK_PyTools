@@ -123,6 +123,6 @@ Python 솔루션 내에 여러 프로젝트들을 빠르게 분석하는데, 도
 ```
 
 
-## 프로젝트별 사용법
+## 사용법
 * [PyFolderViewer](PyFolderViewer/README.md#사용법)
 * [PyProjectViewer](PyProjectViewer/README.md#사용법)
