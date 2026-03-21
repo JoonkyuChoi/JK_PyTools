@@ -43,7 +43,7 @@ portfolio
 
 ## License
 
-### 영문
+### English
 ```markdown
 Software License Agreement (MIT License)
 
