@@ -480,9 +480,27 @@ def print_global_definitions(tree):
 # --------------------------------------
 def analyze_file(file_path, prefix='', connector='', info='', screenconn='', fileconn=''):
   """지정 py파일의 AST구조를 분석하여, 설명과 PITVCF 출력"""
-  # 파일 열기
-  with open(file_path, 'r', encoding='utf-8') as f:
-    source = f.read()
+  # [JKC:20260322-1740] 파일데이터 인코딩 능동 대처
+  # 파일 열기/로드
+  source    = None
+  encodings = ['utf-8', 'cp949', 'euc-kr']  # 인코딩 목록 (가장 범용적인 순서)
+  for enc in encodings:
+    try:
+      with open(file_path, 'r', encoding=enc) as f:
+        source = f.read()
+      # 성공적으로 로드하여 루프 탈출
+      break
+    except UnicodeDecodeError:
+      continue
+  # 모든 인코딩이 실패했을 경우의 최후 수단 (오류 무시하고 로드)
+  if source is None:
+    try:
+      with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+        source = f.read()
+      print(f"[wrn] 파일데이터 인코딩 문제로 손실 발생: {file_path}")
+    except Exception as e:
+      print(f"[err] 파일데이터 로드 오류: {e}")
+      return
   # 코드 분석/보관
   try:
     # ------------------
@@ -516,6 +534,8 @@ def analyze_file(file_path, prefix='', connector='', info='', screenconn='', fil
       print_buffer(prefix, screenconn, fileconn)
   except SyntaxError as e:
     print(f"[err] 구문 오류 발생: {e}")
+  except Exception as e:
+    print(f"[err] 예외 발생: {e}")
 # ==============================================================================================================================================================
 # [메인실행] 관련
 # ==============================================================================================================================================================
