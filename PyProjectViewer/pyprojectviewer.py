@@ -66,6 +66,9 @@ gaDenyNames   = None    # 거부파일명칭목록
 gaPassNames   = None    # 허용파일명칭목록
 gaDenyExts    = None    # 거부확장자목록
 gaPassExts    = None    # 허용확장자목록
+# [JKC:20260322-1820] 기능 추가
+gaDenyDirs    = None    # 거부폴더명칭목록
+gaPassDirs    = None    # 허용폴더명칭목록
 
 gnMaxDepth    = 3       # 최대 깊이
 gbHideDesc    = False   # 파일설명 숨김
@@ -194,17 +197,18 @@ def analyze_folder(root_path, prefix='', depth=0):
       # ------------------
       # 파일명칭 필터링
       # ------------------
-      # gaPassNames 배열의 요소가 name에 포함되어 있다면 continue
-      if gaPassNames and any(pass_name in name for pass_name in gaPassNames):
-          continue
-      # gaDenyNames 배열의 요소가 name과 정확히 일치하면 continue
+      # [JKC:20260322-1840] 버그 패치
+      # gaPassNames 배열의 요소가 name에 포함되지 않으면 continue
+      if gaPassNames and not any(pass_name in name for pass_name in gaPassNames):
+        continue
+      # gaDenyNames 배열의 요소가 name에 포함되어 있다면 continue
       if gaDenyNames and any(deny_name in name for deny_name in gaDenyNames):
-          continue
+        continue
       # ------------------
       # 확장자 필터링
       # ------------------
       if gaPassExts and ext not in gaPassExts:
-          continue
+        continue
       # [JKC:20251019-0810] 코드 변경 (허용되었더라도 거부를 체크하도록 처리)
       if gaDenyExts and ext in gaDenyExts:
         continue
@@ -241,6 +245,16 @@ def analyze_folder(root_path, prefix='', depth=0):
     # 폴더
     # --------------------------------------
     elif os.path.isdir(full_path):
+      # ------------------
+      # [JKC:20260322-1820] 폴더명칭 필터링
+      # ------------------
+      # gaPassDirs 배열의 요소가 dir에 포함되지 않으면 continue
+      if gaPassDirs and not any(pass_dir in full_path for pass_dir in gaPassDirs):
+          continue
+      # gaDenyDirs 배열의 요소가 dir에 포함되어 있다면 continue
+      if gaDenyDirs and any(deny_dir in full_path for deny_dir in gaDenyDirs):
+          continue
+      # ------------------
       print_and_save(f"{prefix}{connector}{entry}/")
       extension = '    ' if i == entries_count - 1 else '│   '
       analyze_folder(full_path, prefix + extension, depth + 1)
@@ -559,13 +573,14 @@ def main():
   # ------------------
   # 전역변수 사용 선언
   # ------------------
-  global gobjSavedFile, gaDenyNames, gaPassNames, gaDenyExts, gaPassExts, gnMaxDepth, gbHideDesc, gbHideSize, gbHideHidden, gbHideCodes, gnViewParts, gnViewItems
+  global gobjSavedFile, gaDenyDirs, gaPassDirs, gaDenyNames, gaPassNames, gaDenyExts, gaPassExts, gnMaxDepth, gbHideDesc, gbHideSize, gbHideHidden, gbHideCodes, gnViewParts, gnViewItems
   # ------------------
   # 콘솔옵션/사용법 설정
   # ------------------
   parser = argparse.ArgumentParser(
-    description="프로젝트 구조 분석툴 (파일검출: 파일명/확장자 필터링 + 깊이 제한 + 파일설명 + 파일사이즈 + 숨김파일 + 코드분석 제어, 코드검출: 출력부분 + 출력항목 비트제어, 결과출력: 콘솔+파일)",
+    description="프로젝트 구조 분석툴 (파일검출: 폴더명/파일명/확장자 필터링 + 깊이 제한 + 파일설명 + 파일사이즈 + 숨김파일 + 코드분석 제어, 코드검출: 출력부분 + 출력항목 비트제어, 결과출력: 콘솔+파일)",
     usage=("python pyprojectviewer.py <parsepath> [--savedfile=경로]\n"
+           "                        [--deny-dir=d1,d2] [--pass-dir=d1,d2]\n"
            "                        [--deny-name=n1,n2] [--pass-name=n1,n2]\n"
            "                        [--deny-ext=ext1,ext2] [--pass-ext=ext1,ext2]\n"
            "                        [--max-depth=N] [--hide-desc] [--hide-size] [--hide-hidden]\n"
@@ -577,6 +592,9 @@ def main():
   # 파일검출
   # --------
   parser.add_argument("--savedfile"   , help="분석결과 저장파일 경로", default="")
+  # [JKC:20260322-1820] 기능 추가
+  parser.add_argument("--deny-dir"    , help="제외할 폴더명칭 목록 (예: bin,obj)", default="")
+  parser.add_argument("--pass-dir"    , help="허용할 폴더명칭 목록 (예: bin,obj)", default="")
   # [JKC:20251019-0810] 기능 추가
   parser.add_argument("--deny-name"   , help="제외할 파일명칭 목록 (예: _test,log_)", default="")
   parser.add_argument("--pass-name"   , help="허용할 파일명칭 목록 (예: _test,log_)", default="")
@@ -625,6 +643,18 @@ def main():
     except Exception as e:
       print(f"[err] 저장파일 열기 실패: {e}")
       return
+  # [JKC:20260322-1820] 기능 추가
+  # --------
+  # 폴더명칭목록
+  # --------
+  # 문자열을 배열로 전환
+  gaDenyDirs = convert_str2list(args.deny_dir)
+  gaPassDirs = convert_str2list(args.pass_dir)
+  # 유효성 체크
+  if gaDenyDirs is None or gaPassDirs is None:
+    print("[err] 폴더명칭 목록 형식이 잘못되었습니다. 쉼표로 구분된 영문 확장자만 입력하세요.")
+    parser.print_usage()
+    return
   # [JKC:20251019-0810] 기능 추가
   # --------
   # 파일명칭목록
