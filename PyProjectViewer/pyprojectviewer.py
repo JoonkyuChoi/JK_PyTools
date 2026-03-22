@@ -248,12 +248,13 @@ def analyze_folder(root_path, prefix='', depth=0):
       # ------------------
       # [JKC:20260322-1820] 폴더명칭 필터링
       # ------------------
+      low_path = full_path.lower()
       # gaPassDirs 배열의 요소가 dir에 포함되지 않으면 continue
-      if gaPassDirs and not any(pass_dir in full_path for pass_dir in gaPassDirs):
-          continue
+      if gaPassDirs and not any(pass_dir in low_path for pass_dir in gaPassDirs):
+        continue
       # gaDenyDirs 배열의 요소가 dir에 포함되어 있다면 continue
-      if gaDenyDirs and any(deny_dir in full_path for deny_dir in gaDenyDirs):
-          continue
+      if gaDenyDirs and any(deny_dir in low_path for deny_dir in gaDenyDirs):
+        continue
       # ------------------
       print_and_save(f"{prefix}{connector}{entry}/")
       extension = '    ' if i == entries_count - 1 else '│   '
